@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
 
 const IMG_LOGO = 'https://www.figma.com/api/mcp/asset/8a5832e1-49b4-4a61-a54a-c0af3464e04c'
@@ -56,6 +57,7 @@ function EmojiCard({ icon, label, selected, accent = '#FF8A7A', accentBg = '#FFF
 
 export default function ConfigRotina() {
   const navigate = useNavigate()
+  const { completeSetup } = useAuth()
   const [moradia, setMoradia]   = useState(null)   // 'sim'|'parcialmente'|'nao'
   const [pets, setPets]         = useState(new Set())  // 'nao'|'cachorro'|'gato'|'outros'
   const [petQtd, setPetQtd]     = useState(1)
@@ -292,7 +294,7 @@ export default function ConfigRotina() {
 
         {/* CTA */}
         <button
-          onClick={() => allDone && navigate('/dashboard')}
+          onClick={() => { if(allDone) { completeSetup(); navigate("/dashboard"); } }}
           style={{
             width:'100%', height:56, border:'none', borderRadius:16, overflow:'hidden', position:'relative',
             background: allDone ? '#FF8A7A' : '#E1E4E3',

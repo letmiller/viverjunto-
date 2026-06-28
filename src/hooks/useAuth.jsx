@@ -3,14 +3,13 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
-// URL base — detecta automaticamente se é produção ou local
 const SITE_URL = window.location.origin
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const [user, setUser]           = useState(null)
+  const [profile, setProfile]     = useState(null)
   const [household, setHousehold] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]     = useState(true)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -50,7 +49,6 @@ export function AuthProvider({ children }) {
       email, password,
       options: {
         data: { name },
-        // Redireciona para a URL correta após confirmar email
         emailRedirectTo: `${SITE_URL}/confirmar`,
       }
     })
@@ -66,8 +64,21 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
   }
 
+  // Marca setup como completo
+  async function completeSetup(tipo) {
+    if (!user) return
+    await supabase.from('profiles').update({
+      setup_completed: true,
+      uso_tipo: tipo || 'casal',
+    }).eq('id', user.id)
+    setProfile(prev => ({ ...prev, setup_completed: true, uso_tipo: tipo }))
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, household, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{
+      user, profile, household, loading,
+      signUp, signIn, signOut, completeSetup,
+    }}>
       {children}
     </AuthContext.Provider>
   )

@@ -13,33 +13,6 @@ import ConfigFinanceira   from './pages/onboarding/ConfigFinanceira'
 import ConfigRotina       from './pages/onboarding/ConfigRotina'
 import './styles/global.css'
 
-// ── Zonas de rota ─────────────────────────────────────────────
-// PÚBLICA: qualquer um acessa (splash, boas-vindas, carrossel, login, cadastro)
-// SETUP: acessível após cadastro, mesmo sem email confirmado
-// PRIVADA: só com sessão ativa
-
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" replace />
-  return children
-}
-
-function PublicRoute({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return <LoadingScreen />
-  if (user) return <Navigate to="/dashboard" replace />
-  return children
-}
-
-// Setup route: acessível sempre — não bloqueia nem redireciona
-// O usuário chega aqui vindo do cadastro (sessão pode ou não estar ativa)
-function SetupRoute({ children }) {
-  const { loading } = useAuth()
-  if (loading) return <LoadingScreen />
-  return children
-}
-
 function PlaceholderPage({ title, icon }) {
   const { signOut } = useAuth()
   return (
@@ -49,14 +22,39 @@ function PlaceholderPage({ title, icon }) {
       <h2 style={{ color:'var(--dark)', textAlign:'center' }}>{title}</h2>
       <p style={{ color:'var(--dark-lt)', fontSize:13, textAlign:'center' }}>Em desenvolvimento — em breve!</p>
       {title === 'Perfil' && (
-        <button onClick={signOut} style={{
-          background:'#fff', border:'1.5px solid #E1E4E3', borderRadius:14,
-          padding:'12px 28px', fontSize:14, fontWeight:500, color:'#51625E',
-          cursor:'pointer', marginTop:8,
-        }}>Sair da conta</button>
+        <button onClick={signOut} style={{ background:'#fff', border:'1.5px solid #E1E4E3',
+          borderRadius:14, padding:'12px 28px', fontSize:14, fontWeight:500,
+          color:'#51625E', cursor:'pointer', marginTop:8 }}>
+          Sair da conta
+        </button>
       )}
     </div>
   )
+}
+
+// ── Rota privada — verifica login E setup ─────────────────────
+function PrivateRoute({ children }) {
+  const { user, profile, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  // Se logou mas não completou o setup → manda para o fluxo
+  if (profile && !profile.setup_completed) return <Navigate to="/objetivos" replace />
+  return children
+}
+
+// ── Rota pública — redireciona logados ────────────────────────
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (user) return <Navigate to="/dashboard" replace />
+  return children
+}
+
+// ── Setup route — acessível sempre ───────────────────────────
+function SetupRoute({ children }) {
+  const { loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  return children
 }
 
 function LoadingScreen() {
@@ -77,7 +75,7 @@ function LoadingScreen() {
             animation:`dotPulse 1.2s ease-in-out ${i*0.2}s infinite alternate` }}/>
         ))}
       </div>
-      <style>{`@keyframes dotPulse { from{opacity:0.3;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }`}</style>
+      <style>{`@keyframes dotPulse{from{opacity:0.3;transform:scale(0.85)}to{opacity:1;transform:scale(1)}}`}</style>
     </div>
   )
 }
@@ -88,24 +86,24 @@ export default function App() {
       <BrowserRouter>
         <div className="app-container">
           <Routes>
-            {/* ── PÚBLICAS — pré-cadastro ── */}
+            {/* Onboarding público */}
             <Route path="/"            element={<SplashScreen />} />
             <Route path="/boas-vindas" element={<BoasVindas />} />
             <Route path="/carrossel"   element={<Carrossel />} />
             <Route path="/confirmar"   element={<ConfirmarEmail />} />
 
-            {/* ── AUTH ── */}
+            {/* Auth */}
             <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/cadastro" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
-            {/* ── SETUP — pós-cadastro, acessíveis mesmo sem email confirmado ── */}
+            {/* Setup — pós-cadastro OU primeiro login */}
             <Route path="/tipo-de-uso"       element={<SetupRoute><TipoDeUso /></SetupRoute>} />
             <Route path="/convidar-parceiro" element={<SetupRoute><ConvidarParceiro /></SetupRoute>} />
             <Route path="/objetivos"         element={<SetupRoute><ObjetivosIniciais /></SetupRoute>} />
             <Route path="/config-financeira" element={<SetupRoute><ConfigFinanceira /></SetupRoute>} />
             <Route path="/config-rotina"     element={<SetupRoute><ConfigRotina /></SetupRoute>} />
 
-            {/* ── APP PRIVADO ── */}
+            {/* App privado */}
             <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
             <Route path="/financas"  element={<PrivateRoute><PlaceholderPage title="Finanças" icon="💰" /></PrivateRoute>} />
             <Route path="/rotina"    element={<PrivateRoute><PlaceholderPage title="Rotina" icon="✓" /></PrivateRoute>} />
