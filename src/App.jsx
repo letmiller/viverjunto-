@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { LoginPage, SignupPage } from './pages/Auth'
 import { DashboardPage } from './pages/Dashboard'
+import ConfirmarEmail     from './pages/ConfirmarEmail'
 import SplashScreen       from './pages/onboarding/SplashScreen'
 import BoasVindas         from './pages/onboarding/BoasVindas'
 import Carrossel          from './pages/onboarding/Carrossel'
@@ -12,26 +13,15 @@ import ConfigFinanceira   from './pages/onboarding/ConfigFinanceira'
 import ConfigRotina       from './pages/onboarding/ConfigRotina'
 import './styles/global.css'
 
-function PlaceholderPage({ title, icon }) {
-  const { signOut } = useAuth()
-  return (
-    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center',
-      justifyContent:'center', background:'var(--cream)', gap:16, padding:24, paddingBottom:100 }}>
-      <div style={{ fontSize:52 }}>{icon}</div>
-      <h2 style={{ color:'var(--dark)', textAlign:'center' }}>{title}</h2>
-      <p style={{ color:'var(--dark-lt)', fontSize:13, textAlign:'center' }}>Em desenvolvimento — em breve!</p>
-      {title === 'Perfil' && (
-        <button className="btn btn-outline" onClick={signOut}
-          style={{ width:'auto', padding:'0 24px', marginTop:8 }}>Sair</button>
-      )}
-    </div>
-  )
-}
+// ── Zonas de rota ─────────────────────────────────────────────
+// PÚBLICA: qualquer um acessa (splash, boas-vindas, carrossel, login, cadastro)
+// SETUP: acessível após cadastro, mesmo sem email confirmado
+// PRIVADA: só com sessão ativa
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/boas-vindas" replace />
+  if (!user) return <Navigate to="/login" replace />
   return children
 }
 
@@ -42,9 +32,36 @@ function PublicRoute({ children }) {
   return children
 }
 
+// Setup route: acessível sempre — não bloqueia nem redireciona
+// O usuário chega aqui vindo do cadastro (sessão pode ou não estar ativa)
+function SetupRoute({ children }) {
+  const { loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  return children
+}
+
+function PlaceholderPage({ title, icon }) {
+  const { signOut } = useAuth()
+  return (
+    <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center',
+      justifyContent:'center', background:'var(--cream)', gap:16, padding:24, paddingBottom:100 }}>
+      <div style={{ fontSize:52 }}>{icon}</div>
+      <h2 style={{ color:'var(--dark)', textAlign:'center' }}>{title}</h2>
+      <p style={{ color:'var(--dark-lt)', fontSize:13, textAlign:'center' }}>Em desenvolvimento — em breve!</p>
+      {title === 'Perfil' && (
+        <button onClick={signOut} style={{
+          background:'#fff', border:'1.5px solid #E1E4E3', borderRadius:14,
+          padding:'12px 28px', fontSize:14, fontWeight:500, color:'#51625E',
+          cursor:'pointer', marginTop:8,
+        }}>Sair da conta</button>
+      )}
+    </div>
+  )
+}
+
 function LoadingScreen() {
   return (
-    <div style={{ minHeight:'100vh', background:'var(--teal)', display:'flex',
+    <div style={{ minHeight:'100vh', background:'#6BA6A0', display:'flex',
       flexDirection:'column', alignItems:'center', justifyContent:'center', gap:20 }}>
       <svg width="72" height="80" viewBox="0 0 120 130" fill="none">
         <circle cx="38" cy="18" r="11" stroke="#FFE0DB" strokeWidth="5.5" strokeLinecap="round"/>
@@ -71,21 +88,24 @@ export default function App() {
       <BrowserRouter>
         <div className="app-container">
           <Routes>
-            {/* Onboarding — fluxo completo */}
-            <Route path="/"                   element={<SplashScreen />} />
-            <Route path="/boas-vindas"        element={<BoasVindas />} />
-            <Route path="/carrossel"          element={<Carrossel />} />
-            <Route path="/tipo-de-uso"        element={<TipoDeUso />} />
-            <Route path="/convidar-parceiro"  element={<ConvidarParceiro />} />
-            <Route path="/objetivos"          element={<ObjetivosIniciais />} />
-            <Route path="/config-financeira"  element={<ConfigFinanceira />} />
-            <Route path="/config-rotina"      element={<ConfigRotina />} />
+            {/* ── PÚBLICAS — pré-cadastro ── */}
+            <Route path="/"            element={<SplashScreen />} />
+            <Route path="/boas-vindas" element={<BoasVindas />} />
+            <Route path="/carrossel"   element={<Carrossel />} />
+            <Route path="/confirmar"   element={<ConfirmarEmail />} />
 
-            {/* Auth */}
+            {/* ── AUTH ── */}
             <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/cadastro" element={<PublicRoute><SignupPage /></PublicRoute>} />
 
-            {/* App */}
+            {/* ── SETUP — pós-cadastro, acessíveis mesmo sem email confirmado ── */}
+            <Route path="/tipo-de-uso"       element={<SetupRoute><TipoDeUso /></SetupRoute>} />
+            <Route path="/convidar-parceiro" element={<SetupRoute><ConvidarParceiro /></SetupRoute>} />
+            <Route path="/objetivos"         element={<SetupRoute><ObjetivosIniciais /></SetupRoute>} />
+            <Route path="/config-financeira" element={<SetupRoute><ConfigFinanceira /></SetupRoute>} />
+            <Route path="/config-rotina"     element={<SetupRoute><ConfigRotina /></SetupRoute>} />
+
+            {/* ── APP PRIVADO ── */}
             <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
             <Route path="/financas"  element={<PrivateRoute><PlaceholderPage title="Finanças" icon="💰" /></PrivateRoute>} />
             <Route path="/rotina"    element={<PrivateRoute><PlaceholderPage title="Rotina" icon="✓" /></PrivateRoute>} />

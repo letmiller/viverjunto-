@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext({})
 
+// URL base — detecta automaticamente se é produção ou local
+const SITE_URL = window.location.origin
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -45,7 +48,11 @@ export function AuthProvider({ children }) {
   async function signUp({ email, password, name }) {
     const { data, error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { name } }
+      options: {
+        data: { name },
+        // Redireciona para a URL correta após confirmar email
+        emailRedirectTo: `${SITE_URL}/confirmar`,
+      }
     })
     return { data, error }
   }
