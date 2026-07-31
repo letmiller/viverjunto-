@@ -1,0 +1,8 @@
+name = "viver-junto"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "viver-junto-db"
+database_id = "7819f92d-c1f3-4e53-95e3-93fecbdfca9d"

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "viver-junto-worker",
+      "runtimeExecutable": "scripts/dev-worker.cmd",
+      "runtimeArgs": [],
+      "port": 8788
+    }
+  ]
+}

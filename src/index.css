@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Coral — Primary (Acolhimento & Energia) */
+  --color-coral-900: #c75445;
+  --color-coral-700: #ff8a7a;
+  --color-coral-500: #ffb4a8;
+  --color-coral-300: #ffe0db;
+  --color-coral-100: #fff2f0;
+  --color-coral-50: #fff9f8;
+
+  /* Teal — Secondary (Serenidade & Confiança) */
+  --color-teal-700: #387069;
+  --color-teal-500: #6ba6a0;
+  --color-teal-300: #9ec5c0;
+  --color-teal-100: #d1e7e5;
+  --color-teal-50: #e7f2f1;
+
+  /* Âmbar — Accent (Leveza & Calor) */
+  --color-amber-700: #c0923f;
+  --color-amber-500: #f5d8a6;
+  --color-amber-300: #fae7c5;
+  --color-amber-100: #fdf4e3;
+  --color-amber-50: #fbf3e0;
+
+  /* Forest — Neutral (Texto & Profundidade) */
+  --color-forest-900: #2e3a37;
+  --color-forest-700: #51625e;
+  --color-forest-500: #808f8c;
+  --color-forest-300: #becac7;
+  --color-forest-100: #e8edec;
+  --color-forest-50: #f2efe6;
+
+  /* Semantic */
+  --color-success: #6ba6a0;
+  --color-warning: #f5d8a6;
+  --color-error: #f06464;
+  --color-info: #9ec5c0;
+  --color-surface: #ffffff;
+  --color-app-bg: #f2efe6;
+
+  /* Fixed ink surface — always dark regardless of theme (hero stat cards,
+     toasts, modal scrim). Does NOT invert in dark mode like forest-*. */
+  --color-ink: #2e3a37;
+  --color-ink-muted: #becac7;
+
+  /* Fixed accent text — for text sitting on a permanently-pale tinted chip
+     (bg-teal-50/100, bg-coral-50/100), which never inverts for dark mode.
+     teal-700/coral-900 themselves DO invert (they're meant for text on the
+     app's dark-adapting surface), so using those on a chip goes
+     light-on-light in dark mode. Use these instead in that specific case. */
+  --color-teal-ink: #387069;
+  --color-coral-ink: #c75445;
+  --color-amber-ink: #8a6118;
+
+  /* Radius scale (design system) */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+
+  /* Organic soft shadows */
+  --shadow-xs: 0 1px 2px rgba(46, 58, 55, 0.06);
+  --shadow-sm: 0 2px 8px rgba(46, 58, 55, 0.08);
+  --shadow-md: 0 4px 16px rgba(46, 58, 55, 0.1);
+  --shadow-lg: 0 8px 24px rgba(46, 58, 55, 0.12);
+  --shadow-xl: 0 16px 40px rgba(46, 58, 55, 0.16);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    /* Belt-and-suspenders: nothing in this layout is meant to scroll
+       sideways, but a stray fixed-position element or an unwrapped flex
+       row can still force the viewport wider than 100vw on mobile,
+       cutting off content at the edge. Clip it at the document root. */
+    overflow-x: hidden;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-app-bg);
+    color: var(--color-forest-900);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+}
+
+/*
+ * Dark theme: re-declares the same design tokens with an inverted ramp
+ * (light shades become dark, dark shades become light) so every utility
+ * class built on these variables (bg-app-bg, text-forest-900, bg-surface…)
+ * re-themes automatically with no per-component dark: classes needed.
+ * Applies by default on system dark mode, and can be forced by the
+ * ThemeToggle setting data-theme="dark"/"light" on <html>.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-forest-900: #f2efe6;
+    --color-forest-700: #b8c4c1;
+    --color-forest-500: #8a9794;
+    --color-forest-300: #3a423f;
+    --color-forest-100: #2a302e;
+    --color-forest-50: #232928;
+    --color-surface: #242b29;
+    --color-app-bg: #1c2321;
+    --color-teal-700: #8fd0c9;
+    --color-coral-900: #ffab9e;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-forest-900: #f2efe6;
+  --color-forest-700: #b8c4c1;
+  --color-forest-500: #8a9794;
+  --color-forest-300: #3a423f;
+  --color-forest-100: #2a302e;
+  --color-forest-50: #232928;
+  --color-surface: #242b29;
+  --color-app-bg: #1c2321;
+  --color-teal-700: #8fd0c9;
+  --color-coral-900: #ffab9e;
+}
+
+/* Currency/quantity fields never want the native step arrows — they're
+   decorative here since we don't handle arrow-key/scroll stepping. */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}

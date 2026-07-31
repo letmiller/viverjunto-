@@ -1,0 +1,2 @@
+ALTER TABLE bills ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0;
+ALTER TABLE bills ADD COLUMN assigned_to TEXT REFERENCES users(id);

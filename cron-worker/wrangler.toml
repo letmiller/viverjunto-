@@ -1,0 +1,11 @@
+name = "viver-junto-cron"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# 11:00 UTC = 08:00 in Brasília (UTC-3, no DST) — a sensible morning
+# reminder time for bills due today/soon.
+[triggers]
+crons = ["0 11 * * *"]
+
+[vars]
+APP_ORIGIN = "https://viver-junto.pages.dev"
