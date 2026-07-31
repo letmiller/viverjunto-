@@ -1,5 +1,5 @@
 import { hashPassword } from '../../_lib/crypto'
-import { getHouseholdIdForUser } from '../../_lib/household'
+import { getHouseholdIdForUser, isViewer, VIEWER_ERROR_MESSAGE } from '../../_lib/household'
 import { type Env, errorResponse, getUserId, json } from '../../_lib/session'
 
 interface Body {
@@ -12,12 +12,15 @@ interface Body {
 // consistent with the rest of the app. Doesn't require the owner role: it's
 // a recovery path, not a permissions action, and gating it to the owner
 // would leave no one able to help if the owner themself is locked out.
+// It IS gated to non-viewers, though — a read-only member resetting someone
+// else's password is a full account takeover, not a recovery action.
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const callerId = await getUserId(request, env)
   if (!callerId) return errorResponse('Não autenticado.', 401)
 
   const householdId = await getHouseholdIdForUser(callerId, env)
   if (!householdId) return errorResponse('Você não faz parte de uma casa.', 400)
+  if (await isViewer(callerId, householdId, env)) return errorResponse(VIEWER_ERROR_MESSAGE, 403)
 
   const body = (await request.json().catch(() => null)) as Body | null
   if (!body?.userId || !body?.newPassword) {

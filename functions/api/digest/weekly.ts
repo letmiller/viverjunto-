@@ -1,4 +1,4 @@
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { type Env, errorResponse, json } from '../../_lib/session'
 
 interface HouseholdRow {
@@ -72,11 +72,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     if (entradas === 0 && saidas === 0) continue // nothing to report
 
     const categoryLines = categories
-      .map((c) => `<li>${c.category}: R$ ${c.total.toLocaleString('pt-BR')}</li>`)
+      .map((c) => `<li>${escapeHtml(c.category)}: R$ ${c.total.toLocaleString('pt-BR')}</li>`)
       .join('')
 
     const html = `
-      <h2>Resumo da semana — ${hh.name}</h2>
+      <h2>Resumo da semana — ${escapeHtml(hh.name)}</h2>
       <p>Entradas: <strong>R$ ${entradas.toLocaleString('pt-BR')}</strong></p>
       <p>Saídas: <strong>R$ ${saidas.toLocaleString('pt-BR')}</strong></p>
       <p>Saldo: <strong>R$ ${(entradas - saidas).toLocaleString('pt-BR')}</strong></p>

@@ -1,5 +1,5 @@
 import { randomId } from '../../_lib/crypto'
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { type Env, errorResponse, json } from '../../_lib/session'
 
 interface Body {
@@ -36,7 +36,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
         to: email,
         subject: 'Redefinir sua senha — Viver Junto',
         html: `
-          <p>Oi, ${user.name.split(' ')[0]}!</p>
+          <p>Oi, ${escapeHtml(user.name.split(' ')[0])}!</p>
           <p>Recebemos um pedido para redefinir a senha da sua conta no Viver Junto.</p>
           <p><a href="${resetLink}">Clique aqui para criar uma nova senha</a> (válido por 30 minutos).</p>
           <p>Se você não pediu isso, pode ignorar este email.</p>

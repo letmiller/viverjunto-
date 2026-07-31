@@ -1,6 +1,6 @@
 import { hashPassword, randomId, randomInviteCode, signJwt } from '../../_lib/crypto'
 import { isHouseholdFull } from '../../_lib/household'
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { type Env, errorResponse, json, sessionCookieHeader } from '../../_lib/session'
 
 interface SignupBody {
@@ -114,7 +114,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       to: email,
       subject: 'Confirme seu email — Viver Junto',
       html: `
-        <p>Oi, ${body.name.trim().split(' ')[0]}!</p>
+        <p>Oi, ${escapeHtml(body.name.trim().split(' ')[0])}!</p>
         <p>Confirme seu email para garantir que os resumos e lembretes do Viver Junto cheguem certinho.</p>
         <p><a href="${verifyLink}">Clique aqui para confirmar seu email</a> (válido por 24 horas).</p>
       `,

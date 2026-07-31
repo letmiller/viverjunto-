@@ -1,4 +1,4 @@
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { sendPushToUser } from '../../_lib/push'
 import { type Env, errorResponse, json } from '../../_lib/session'
 
@@ -59,9 +59,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       if (relevant.length === 0) continue
 
       const plural = relevant.length > 1
-      const items = relevant.map((t) => `<li>${t.icon ?? '✅'} ${t.title}</li>`).join('')
+      const items = relevant.map((t) => `<li>${escapeHtml(t.icon ?? '✅')} ${escapeHtml(t.title)}</li>`).join('')
       const html = `
-        <h2>Tarefas de hoje — ${hh.name}</h2>
+        <h2>Tarefas de hoje — ${escapeHtml(hh.name)}</h2>
         <p>Você tem ${relevant.length} tarefa${plural ? 's' : ''} vencendo hoje:</p>
         <ul>${items}</ul>
         <p style="color:#808f8c;font-size:12px;">Enviado pelo Viver Junto.</p>

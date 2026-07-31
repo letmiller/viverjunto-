@@ -1,4 +1,4 @@
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { sendPushToUser } from '../../_lib/push'
 import { type Env, errorResponse, json } from '../../_lib/session'
 
@@ -78,11 +78,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           (new Date(b.due_date + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000,
         )
         const label = diffDays === 0 ? 'vence hoje' : diffDays === 1 ? 'vence amanhã' : `vence em ${diffDays}d`
-        return `<li>${b.title} — R$ ${b.amount.toLocaleString('pt-BR')} (${label})</li>`
+        return `<li>${escapeHtml(b.title)} — R$ ${b.amount.toLocaleString('pt-BR')} (${label})</li>`
       })
       .join('')
     const html = `
-      <h2>Contas perto de vencer — ${hh.name}</h2>
+      <h2>Contas perto de vencer — ${escapeHtml(hh.name)}</h2>
       <ul>${items}</ul>
       <p style="color:#808f8c;font-size:12px;">Enviado pelo Viver Junto.</p>
     `

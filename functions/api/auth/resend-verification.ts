@@ -1,5 +1,5 @@
 import { randomId } from '../../_lib/crypto'
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { type Env, errorResponse, getUserId, json } from '../../_lib/session'
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -26,7 +26,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       to: user.email,
       subject: 'Confirme seu email — Viver Junto',
       html: `
-        <p>Oi, ${user.name.split(' ')[0]}!</p>
+        <p>Oi, ${escapeHtml(user.name.split(' ')[0])}!</p>
         <p><a href="${verifyLink}">Clique aqui para confirmar seu email</a> (válido por 24 horas).</p>
       `,
     })

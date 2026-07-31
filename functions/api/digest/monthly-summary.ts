@@ -1,4 +1,4 @@
-import { sendEmail } from '../../_lib/mail'
+import { escapeHtml, sendEmail } from '../../_lib/mail'
 import { type Env, errorResponse, json } from '../../_lib/session'
 
 interface HouseholdRow {
@@ -83,7 +83,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       .bind(hh.id, lastMonthStart, thisMonthStart)
       .all<CategoryRow>()
 
-    const categoryLines = categories.map((c) => `<li>${c.category}: R$ ${c.total.toLocaleString('pt-BR')}</li>`).join('')
+    const categoryLines = categories
+      .map((c) => `<li>${escapeHtml(c.category)}: R$ ${c.total.toLocaleString('pt-BR')}</li>`)
+      .join('')
 
     let comparisonLine = ''
     if (prevSaidas > 0) {
@@ -92,7 +94,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     }
 
     const html = `
-      <h2>Resumo do mês — ${hh.name}</h2>
+      <h2>Resumo do mês — ${escapeHtml(hh.name)}</h2>
       <p>Entradas: <strong>R$ ${entradas.toLocaleString('pt-BR')}</strong></p>
       <p>Saídas: <strong>R$ ${saidas.toLocaleString('pt-BR')}</strong></p>
       <p>Saldo: <strong>R$ ${(entradas - saidas).toLocaleString('pt-BR')}</strong></p>

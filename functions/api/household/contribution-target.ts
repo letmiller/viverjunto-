@@ -1,4 +1,4 @@
-import { getHouseholdIdForUser } from '../../_lib/household'
+import { getHouseholdIdForUser, isViewer, VIEWER_ERROR_MESSAGE } from '../../_lib/household'
 import { type Env, errorResponse, getUserId, json } from '../../_lib/session'
 
 interface Body {
@@ -12,6 +12,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   const householdId = await getHouseholdIdForUser(callerId, env)
   if (!householdId) return errorResponse('Você não faz parte de uma casa.', 400)
+  if (await isViewer(callerId, householdId, env)) return errorResponse(VIEWER_ERROR_MESSAGE, 403)
 
   const body = (await request.json().catch(() => null)) as Body | null
   if (!body?.userId) return errorResponse('Informe a pessoa.')

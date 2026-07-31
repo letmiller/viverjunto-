@@ -22,6 +22,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return errorResponse('Inscrição inválida.')
   }
 
+  // Reassigning user_id on a matching endpoint is intentional: the endpoint is an
+  // opaque per-device token from the browser's push service, never exposed to other
+  // users anywhere in this API, so a match here means "same device re-subscribing"
+  // (e.g. a shared household tablet where a different member is now logged in) —
+  // not a value an attacker could guess or steal to hijack someone else's pushes.
   const existing = await env.DB.prepare('SELECT id FROM push_subscriptions WHERE endpoint = ?')
     .bind(body.endpoint)
     .first<{ id: string }>()
