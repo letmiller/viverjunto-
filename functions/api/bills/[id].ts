@@ -33,9 +33,10 @@ interface BillRow {
   sort_order: number
 }
 
-// Bills pay out of a linked account: recording a payment logs an expense
-// transaction against that account so its balance drops accordingly and the
-// payment shows up in the regular transaction history/analytics too.
+// Every bill payment logs an expense transaction, so it shows up in "Últimos
+// lançamentos" and analytics regardless of whether the bill has a linked
+// account. When it IS linked to an account, that account's balance drops
+// accordingly (account_id column, nullable, is just left null otherwise).
 async function recordPaymentTransaction(
   env: Env,
   householdId: string,
@@ -43,7 +44,7 @@ async function recordPaymentTransaction(
   bill: { title: string; account_id: string | null; category: string | null },
   delta: number,
 ) {
-  if (!bill.account_id || delta <= 0) return
+  if (delta <= 0) return
   await env.DB.prepare(
     `INSERT INTO transactions (id, household_id, account_id, category, description, amount, type, date, created_by)
      VALUES (?, ?, ?, ?, ?, ?, 'expense', date('now'), ?)`,
