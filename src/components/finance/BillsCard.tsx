@@ -45,13 +45,27 @@ function billStatus(bill: Bill): BillStatus {
   return { label: 'Futuro', icon: '○', bg: 'bg-forest-100', text: 'text-forest-500' }
 }
 
-function dueLabel(dueDate: string): string {
+function daysUntil(dueDate: string): number {
   const today = localDateString()
-  const diffDays = Math.round((new Date(dueDate + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000)
+  return Math.round((new Date(dueDate + 'T00:00:00').getTime() - new Date(today + 'T00:00:00').getTime()) / 86400000)
+}
+
+function dueLabel(dueDate: string): string {
+  const diffDays = daysUntil(dueDate)
   if (diffDays < 0) return `Venceu há ${-diffDays}d`
   if (diffDays === 0) return 'Vence hoje'
   if (diffDays === 1) return 'Vence amanhã'
   return `Vence dia ${new Date(dueDate + 'T00:00:00').getDate()}`
+}
+
+// Recurring bills auto-clone their next occurrence as soon as the current one
+// is paid (so it's never forgotten), but that clone is often a month out —
+// showing it right away in "Contas a pagar" reads as "you still owe this."
+// Only surface a bill here once it's close (or overdue); it still exists in
+// the backend and will show up on its own once it crosses this window.
+const DUE_SOON_DAYS = 7
+function isDueSoon(dueDate: string): boolean {
+  return daysUntil(dueDate) <= DUE_SOON_DAYS
 }
 
 export function BillsCard() {
@@ -210,10 +224,11 @@ export function BillsCard() {
   }
 
   const partner = members.find((m) => m.id !== user?.id)
-  const unpaid = bills.filter((b) => !b.paid)
+  const unpaid = bills.filter((b) => !b.paid && isDueSoon(b.due_date))
 
   async function handleReorder(reordered: Bill[]) {
-    setBills((prev) => [...reordered, ...prev.filter((b) => b.paid)])
+    const reorderedIds = new Set(reordered.map((b) => b.id))
+    setBills((prev) => [...reordered, ...prev.filter((b) => !reorderedIds.has(b.id))])
     try {
       await billsApi.reorder(reordered.map((b) => b.id))
     } catch {
