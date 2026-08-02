@@ -6,7 +6,6 @@ import { Card } from '../components/ui/Card'
 import { Fab } from '../components/ui/Fab'
 import { Modal } from '../components/ui/Modal'
 import { BottomNav } from '../components/layout/BottomNav'
-import { MoodCalendarModal } from '../components/home/MoodCalendarModal'
 import heartIcon from '../assets/dashboard/heart.svg'
 import chevronIcon from '../assets/dashboard/chevron.svg'
 import tileContas from '../assets/dashboard/tile-contas.png'
@@ -32,13 +31,12 @@ import {
   type ShoppingItem,
   type Checkin,
   type Member,
-  type ActivityEntry,
   type Transaction,
   type Bill,
   type Goal,
   type FinancialAccount,
 } from '../lib/api'
-import { localDateString, timeAgo } from '../lib/date'
+import { localDateString } from '../lib/date'
 import { toast, toastError } from '../store/toast'
 
 const LOAD_COLORS = ['bg-coral-700', 'bg-teal-500', 'bg-amber-700', 'bg-forest-500']
@@ -57,18 +55,11 @@ const MOODS = [
 ]
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-const REACTION_EMOJIS = ['👍', '❤️', '🎉']
-
 const ADD_OPTIONS = [
   { key: 'transaction', icon: '💰', label: 'Lançamento', to: '/financas' },
   { key: 'task', icon: '✅', label: 'Tarefa', to: '/organizacao' },
   { key: 'shopping', icon: '🛒', label: 'Item de compra', to: '/lista-compras' },
 ] as const
-
-function todayLabel() {
-  const raw = new Date().toLocaleDateString('pt-BR', { weekday: 'long' })
-  return raw.charAt(0).toUpperCase() + raw.slice(1)
-}
 
 function todayLongLabel() {
   const raw = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -105,35 +96,34 @@ export function DashboardPage() {
   const [bills, setBills] = useState<Bill[]>([])
   const [goalsList, setGoalsList] = useState<Goal[]>([])
   const [accountsList, setAccountsList] = useState<FinancialAccount[]>([])
-  const [feed, setFeed] = useState<ActivityEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddChooser, setShowAddChooser] = useState(false)
-  const [showMoodCalendar, setShowMoodCalendar] = useState(false)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
   const [showEquilibrioDetail, setShowEquilibrioDetail] = useState(false)
-  const [showAllActivity, setShowAllActivity] = useState(false)
   const markActivitySeen = useActivityStore((s) => s.markSeen)
+
+  // Not rendered as a feed anywhere on this screen — just marks the latest
+  // household activity as seen, which clears the "new activity" indicator
+  // shown elsewhere in the app (e.g. the bottom nav).
+  function markLatestActivitySeen() {
+    activityApi
+      .list()
+      .then((r) => {
+        if (r.activity[0]) markActivitySeen(r.activity[0].created_at)
+      })
+      .catch(() => {})
+  }
 
   async function setMyMood(value: string) {
     try {
       await moodApi.set(value, localDateString())
       const c = await moodApi.today(localDateString())
       setCheckins(c.checkins)
-      loadFeed()
+      markLatestActivitySeen()
       toast('Humor atualizado.')
     } catch {
       toastError('Não foi possível salvar seu humor agora.')
     }
-  }
-
-  function loadFeed() {
-    activityApi
-      .list()
-      .then((r) => {
-        setFeed(r.activity)
-        if (r.activity[0]) markActivitySeen(r.activity[0].created_at)
-      })
-      .catch(() => {})
   }
 
   useEffect(() => {
@@ -155,22 +145,11 @@ export function DashboardPage() {
       goalsApi.list().then((r) => setGoalsList(r.goals)),
       accountsApi.list().then((r) => setAccountsList(r.accounts)),
       activityApi.list().then((r) => {
-        setFeed(r.activity)
         if (r.activity[0]) markActivitySeen(r.activity[0].created_at)
       }),
     ]).finally(() => setLoading(false))
   }, [])
 
-  async function handleReact(activityId: string, emoji: string) {
-    try {
-      await activityApi.react(activityId, emoji)
-      loadFeed()
-    } catch {
-      toastError('Não foi possível reagir agora.')
-    }
-  }
-
-  const doneTasks = taskList.filter((t) => t.status === 'done').length
   const myMoodToday = checkins.find((c) => c.user_id === user?.id)?.mood
   const pendingItems = items.filter((i) => !i.checked)
   const estimatedTotal = pendingItems.reduce((sum, i) => sum + (i.price ?? 0), 0)
@@ -417,87 +396,6 @@ export function DashboardPage() {
               <span className="text-sm font-bold text-forest-900/80">{goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}</span>
             </button>
           </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-forest-900">Hoje</p>
-              <p className="text-xs text-forest-500">{todayLabel()}</p>
-            </div>
-            <button
-              onClick={() => setShowMoodCalendar(true)}
-              aria-label="Ver calendário"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-teal-50 text-base text-teal-ink"
-            >
-              📅
-            </button>
-          </div>
-          {taskList.length > 0 && (
-            <>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-forest-100">
-                <div
-                  className="h-full rounded-full bg-teal-500 transition-all"
-                  style={{ width: `${(doneTasks / taskList.length) * 100}%` }}
-                />
-              </div>
-              <p className="mt-1 text-right text-xs text-forest-500">
-                ✓ {doneTasks} de {taskList.length}
-              </p>
-            </>
-          )}
-
-          {feed.length > 0 && (
-            <div className="mt-4 border-t border-forest-50 pt-3">
-              <p className="text-xs font-semibold text-forest-500">Atividades realizadas</p>
-
-              <div className="mt-2 flex flex-col gap-3">
-                  {feed.slice(0, showAllActivity ? 8 : 3).map((entry) => {
-                    const myReaction = entry.reactions.find((r) => r.user_id === user?.id)
-                    return (
-                      <div key={entry.id} className="flex gap-2.5 border-b border-forest-50 pb-3 last:border-none last:pb-0">
-                        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-forest-50 text-sm">
-                          {entry.icon ?? '💬'}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-forest-700">
-                            <span className="font-semibold text-forest-900">{entry.user_name.split(' ')[0]}</span>{' '}
-                            {entry.description}
-                          </p>
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="text-xs text-forest-400">{timeAgo(entry.created_at)}</span>
-                            {REACTION_EMOJIS.map((emoji) => {
-                              const count = entry.reactions.filter((r) => r.emoji === emoji).length
-                              return (
-                                <button
-                                  key={emoji}
-                                  onClick={() => handleReact(entry.id, emoji)}
-                                  aria-label={`Reagir com ${emoji}`}
-                                  aria-pressed={myReaction?.emoji === emoji}
-                                  className={`flex min-h-[32px] items-center gap-0.5 rounded-full px-1.5 text-xs ${
-                                    myReaction?.emoji === emoji ? 'bg-teal-100' : ''
-                                  }`}
-                                >
-                                  {emoji} {count > 0 && count}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                {feed.length > 3 && (
-                  <button
-                    onClick={() => setShowAllActivity((v) => !v)}
-                    className="flex min-h-[32px] w-full items-center justify-center text-xs font-medium text-teal-700"
-                  >
-                    {showAllActivity ? 'Ver menos' : 'Ver mais'}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </Card>
 
         <Card>
@@ -811,8 +709,6 @@ export function DashboardPage() {
           ))}
         </div>
       </Modal>
-
-      <MoodCalendarModal open={showMoodCalendar} onClose={() => setShowMoodCalendar(false)} feed={feed} />
 
       <Modal open={showEquilibrioDetail} onClose={() => setShowEquilibrioDetail(false)} title="Equilíbrio da casa">
         <div className="flex flex-col gap-4">
