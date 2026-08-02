@@ -14,13 +14,13 @@ import { useActivityStore } from '../store/activity'
 import {
   tasks as tasksApi,
   shopping,
-  analytics,
   mood as moodApi,
   household,
   transactions,
   activity as activityApi,
   bills as billsApi,
   goals as goalsApi,
+  accounts as accountsApi,
   type Task,
   type ShoppingItem,
   type Checkin,
@@ -29,6 +29,7 @@ import {
   type Transaction,
   type Bill,
   type Goal,
+  type FinancialAccount,
 } from '../lib/api'
 import { localDateString, timeAgo } from '../lib/date'
 import { toast, toastError } from '../store/toast'
@@ -62,6 +63,18 @@ function todayLabel() {
   return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
 
+function todayLongLabel() {
+  const raw = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
+
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Bom dia'
+  if (h < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
+
 function last7Days() {
   const days: { date: string; label: string }[] = []
   for (let i = 6; i >= 0; i--) {
@@ -81,10 +94,10 @@ export function DashboardPage() {
   const [items, setItems] = useState<ShoppingItem[]>([])
   const [checkins, setCheckins] = useState<Checkin[]>([])
   const [members, setMembers] = useState<Member[]>([])
-  const [balance, setBalance] = useState({ entradas: 0, saidas: 0 })
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
   const [bills, setBills] = useState<Bill[]>([])
   const [goalsList, setGoalsList] = useState<Goal[]>([])
+  const [accountsList, setAccountsList] = useState<FinancialAccount[]>([])
   const [feed, setFeed] = useState<ActivityEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddChooser, setShowAddChooser] = useState(false)
@@ -139,14 +152,10 @@ export function DashboardPage() {
       transactions.list().then((r) => setRecentTransactions(r.transactions)),
       billsApi.list().then((r) => setBills(r.bills)),
       goalsApi.list().then((r) => setGoalsList(r.goals)),
+      accountsApi.list().then((r) => setAccountsList(r.accounts)),
       activityApi.list().then((r) => {
         setFeed(r.activity)
         if (r.activity[0]) markActivitySeen(r.activity[0].created_at)
-      }),
-      analytics.weekly().then((r) => {
-        const entradas = r.days.reduce((s, d) => s + d.entradas, 0)
-        const saidas = r.days.reduce((s, d) => s + d.saidas, 0)
-        setBalance({ entradas, saidas })
       }),
     ]).finally(() => setLoading(false))
   }, [])
@@ -290,6 +299,23 @@ export function DashboardPage() {
     : []
   const myEquilibrio = equilibrio.find((m) => m.id === user?.id)
   const mentalLoadPct = myEquilibrio?.taskPct ?? equilibrio[0]?.taskPct ?? 0
+  const totalBalance = accountsList.reduce((s, a) => s + a.balance, 0)
+  // The header's two-color split bar only makes visual sense for exactly two
+  // people — 3+ members already get the tiled breakdown in the card below.
+  const twoPersonEquilibrio = equilibrio.length === 2 ? equilibrio : null
+
+  // "Healthy" = no category is lopsided by more than 20 points from an even
+  // split across however many people share the household.
+  const evenSharePct = members.length > 0 ? 100 / members.length : 50
+  const maxDeviation = Math.max(
+    0,
+    ...equilibrio.flatMap((m) => [
+      Math.abs(m.financePct - evenSharePct),
+      Math.abs(m.taskPct - evenSharePct),
+      Math.abs(m.shopPct - evenSharePct),
+    ]),
+  )
+  const balanceHealthy = equilibrio.length === 0 || maxDeviation <= 20
 
   if (loading) {
     return (
@@ -311,64 +337,80 @@ export function DashboardPage() {
         ]}
       />
 
-      <div className="relative z-10 flex items-center justify-between px-4 pb-2 pt-6">
-        <div>
-          <p className="text-xs text-forest-500">Olá,</p>
-          <p className="text-lg font-bold text-forest-900">{firstName} 👋</p>
+      <div className="relative z-10 bg-ink px-4 pb-8 pt-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-ink-muted">{todayLongLabel()}</p>
+            <p className="text-lg font-bold text-white">
+              {greeting()}, {firstName}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/perfil')}
+            aria-label="Ir para o perfil"
+            className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-sm font-bold text-forest-900 shadow-xs"
+          >
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="" className="size-full object-cover" />
+            ) : (
+              firstName[0]?.toUpperCase()
+            )}
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/perfil')}
-          aria-label="Ir para o perfil"
-          className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface text-sm font-bold text-forest-900 shadow-xs"
-        >
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="size-full object-cover" />
-          ) : (
-            firstName[0]?.toUpperCase()
-          )}
+
+        <button onClick={() => navigate('/financas')} className="mt-6 flex w-full flex-col items-center gap-1 text-center">
+          <span className="text-sm font-medium text-teal-100">Conta compartilhada</span>
+          <span className="text-[28px] font-bold leading-tight text-white">R$ {formatBRL(totalBalance)}</span>
         </button>
+
+        {twoPersonEquilibrio && (
+          <div className="mt-4 flex flex-col gap-1.5">
+            <div className="flex h-[5px] overflow-hidden rounded-full bg-teal-100">
+              <div className="h-full bg-coral-700" style={{ width: `${twoPersonEquilibrio[0].financePct}%` }} />
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-coral-300">
+                {twoPersonEquilibrio[0].name.split(' ')[0]} {twoPersonEquilibrio[0].financePct}%
+              </span>
+              <span className="text-teal-100">
+                {twoPersonEquilibrio[1].name.split(' ')[0]} {twoPersonEquilibrio[1].financePct}%
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
-        <Card className="bg-ink text-white">
-          <p className="text-xs text-ink-muted">Movimentado nos últimos 7 dias</p>
-          <p className="mt-1 text-3xl font-bold">
-            R$ {formatBRL(balance.entradas - balance.saidas)}
-          </p>
-          <button
-            onClick={() => navigate('/financas')}
-            className="mt-3 flex min-h-[32px] items-center rounded-full bg-white/10 px-3 text-xs"
-          >
-            Ver finanças →
-          </button>
+      <div className="relative z-10 -mt-16 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
+        <Card>
+          <p className="text-sm font-semibold text-forest-900">Visão geral</p>
+          <p className="text-xs text-forest-500">O que precisa da sua atenção</p>
+          <div className="mt-3 flex gap-2">
+            <MiniStatTile
+              icon="📅"
+              title="Contas"
+              value={billsDueSoon > 0 ? `${billsDueSoon} em breve` : '0 em breve'}
+              sub={nextBill ? `Próx: R$ ${formatBRL(nextBill.amount)}` : undefined}
+              tone="amber"
+              onClick={() => navigate('/financas')}
+            />
+            <MiniStatTile
+              icon="✓"
+              title="Tarefas"
+              value={String(pendingTasksCount)}
+              sub={overdueTasks > 0 ? `${overdueTasks} urgentes` : undefined}
+              tone="teal"
+              onClick={() => navigate('/organizacao')}
+            />
+            <MiniStatTile
+              icon="✨"
+              title="Metas"
+              value={goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}
+              sub="Do objetivo"
+              tone="coral"
+              onClick={() => navigate('/financas')}
+            />
+          </div>
         </Card>
-
-        <div className="flex gap-2">
-          <MiniStatTile
-            icon="📅"
-            title="Contas"
-            value={billsDueSoon > 0 ? `${billsDueSoon} em breve` : '0 em breve'}
-            sub={nextBill ? `Próx: R$ ${formatBRL(nextBill.amount)}` : undefined}
-            tone="amber"
-            onClick={() => navigate('/financas')}
-          />
-          <MiniStatTile
-            icon="✓"
-            title="Tarefas"
-            value={String(pendingTasksCount)}
-            sub={overdueTasks > 0 ? `${overdueTasks} urgentes` : undefined}
-            tone="teal"
-            onClick={() => navigate('/organizacao')}
-          />
-          <MiniStatTile
-            icon="✨"
-            title="Metas"
-            value={goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}
-            sub="Do objetivo"
-            tone="coral"
-            onClick={() => navigate('/financas')}
-          />
-        </div>
 
         {showChecklist && (
           <Card>
@@ -499,7 +541,7 @@ export function DashboardPage() {
 
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-forest-900">Casa hoje</p>
+            <p className="text-sm font-semibold text-forest-900">Atividade da casa</p>
             <button
               onClick={() => navigate('/organizacao')}
               className="flex min-h-[32px] items-center text-xs font-medium text-teal-700"
@@ -510,41 +552,50 @@ export function DashboardPage() {
           {timelineEntries.length === 0 ? (
             <p className="mt-2 text-xs text-forest-500">Nada pendente por aqui. 🎉</p>
           ) : (
-            <div className="mt-3 flex flex-col gap-3">
-              {timelineEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
+            <div className="mt-3 flex flex-col">
+              {timelineEntries.map((entry, i) => (
+                <div
+                  key={entry.id}
+                  className={`flex items-center justify-between gap-3 py-3 ${
+                    i < timelineEntries.length - 1 ? 'border-b border-forest-100' : ''
+                  } ${i === 0 ? 'pt-0' : ''}`}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <span
-                      className={`flex size-6 shrink-0 items-center justify-center rounded-full text-sm ${
+                      className={`flex size-11 shrink-0 items-center justify-center rounded-full text-lg ${
                         entry.tagTone === 'error'
-                          ? 'bg-coral-50'
+                          ? 'bg-coral-100'
                           : entry.tagTone === 'teal'
-                            ? 'bg-teal-50'
+                            ? 'bg-teal-100'
                             : entry.tagTone === 'amber'
-                              ? 'bg-amber-50'
-                              : 'bg-forest-50'
+                              ? 'bg-amber-100'
+                              : 'bg-forest-100'
                       }`}
                     >
                       {entry.icon}
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-forest-900">{entry.title}</p>
+                      <p className="truncate text-base font-semibold text-forest-900">{entry.title}</p>
                       <p className="truncate text-xs text-forest-500">{entry.sub}</p>
                     </div>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      entry.tagTone === 'error'
-                        ? 'bg-coral-100 text-error'
-                        : entry.tagTone === 'teal'
+                  {entry.tagTone === 'error' ? (
+                    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-coral-100 px-3 py-1 text-xs font-semibold text-error">
+                      <span className="size-1.5 shrink-0 rounded-full bg-error" /> Urgente
+                    </span>
+                  ) : (
+                    <span
+                      className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                        entry.tagTone === 'teal'
                           ? 'bg-teal-100 text-teal-ink'
                           : entry.tagTone === 'amber'
                             ? 'bg-amber-100 text-amber-700'
                             : 'bg-forest-100 text-forest-500'
-                    }`}
-                  >
-                    {entry.tag}
-                  </span>
+                      }`}
+                    >
+                      {entry.tag}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -558,39 +609,62 @@ export function DashboardPage() {
               <span className="text-xs font-medium text-teal-700">Ver detalhes ›</span>
             </div>
             <p className="mt-1 text-xs text-forest-500">Como as responsabilidades estão distribuídas</p>
-            <button
-              onClick={() => setShowEquilibrioDetail(true)}
-              className="mt-3 flex w-full flex-wrap items-stretch gap-2 text-left"
-            >
-              {equilibrio.map((m, i) => {
-                const tone = EQUILIBRIO_TONES[i % EQUILIBRIO_TONES.length]
-                return (
-                  <div
-                    key={m.id}
-                    className={`flex min-w-[45%] flex-1 flex-col gap-2 rounded-lg p-2 ${tone.card}`}
-                  >
-                    <div className="text-center">
-                      <p className={`text-2xl font-bold ${tone.text}`}>{m.financePct}%</p>
-                      <p className="text-xs font-semibold text-ink">{m.name.split(' ')[0]}</p>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {[
-                        { label: 'Finanças', pct: m.financePct },
-                        { label: 'Tarefas', pct: m.taskPct },
-                        { label: 'Compras', pct: m.shopPct },
-                      ].map((row) => (
-                        <div key={row.label} className="flex flex-col gap-0.5">
-                          <div className="h-1 overflow-hidden rounded-full bg-forest-100">
-                            <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${row.pct}%` }} />
+            {twoPersonEquilibrio ? (
+              <button
+                onClick={() => setShowEquilibrioDetail(true)}
+                className="mt-3 flex w-full items-center justify-between gap-2 text-left"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <span className="text-[28px] font-bold text-coral-ink">{twoPersonEquilibrio[0].financePct}%</span>
+                  <span className="text-xs font-semibold text-forest-700">{twoPersonEquilibrio[0].name.split(' ')[0]}</span>
+                </div>
+                <div className="flex flex-1 items-center justify-center gap-2">
+                  <span className="h-px flex-1 border-t border-dashed border-coral-300" />
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-base shadow-sm">
+                    🤍
+                  </span>
+                  <span className="h-px flex-1 border-t border-dashed border-teal-300" />
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <span className="text-[28px] font-bold text-teal-700">{twoPersonEquilibrio[1].financePct}%</span>
+                  <span className="text-xs font-semibold text-forest-700">{twoPersonEquilibrio[1].name.split(' ')[0]}</span>
+                </div>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowEquilibrioDetail(true)}
+                className="mt-3 flex w-full flex-wrap items-stretch gap-2 text-left"
+              >
+                {equilibrio.map((m, i) => {
+                  const tone = EQUILIBRIO_TONES[i % EQUILIBRIO_TONES.length]
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex min-w-[45%] flex-1 flex-col gap-2 rounded-lg p-2 ${tone.card}`}
+                    >
+                      <div className="text-center">
+                        <p className={`text-2xl font-bold ${tone.text}`}>{m.financePct}%</p>
+                        <p className="text-xs font-semibold text-ink">{m.name.split(' ')[0]}</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {[
+                          { label: 'Finanças', pct: m.financePct },
+                          { label: 'Tarefas', pct: m.taskPct },
+                          { label: 'Compras', pct: m.shopPct },
+                        ].map((row) => (
+                          <div key={row.label} className="flex flex-col gap-0.5">
+                            <div className="h-1 overflow-hidden rounded-full bg-forest-100">
+                              <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${row.pct}%` }} />
+                            </div>
+                            <span className="text-xs text-forest-500">{row.label}</span>
                           </div>
-                          <span className="text-xs text-forest-500">{row.label}</span>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </button>
+                  )
+                })}
+              </button>
+            )}
             <div className="mt-3 flex items-center gap-2">
               <span className="shrink-0 text-xs text-forest-500">Carga mental da semana</span>
               <div className="h-2 flex-1 overflow-hidden rounded-full bg-forest-100">
@@ -628,7 +702,7 @@ export function DashboardPage() {
 
         <Card>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-forest-900">Compras</p>
+            <p className="text-sm font-semibold text-forest-900">Compras da semana</p>
             <button
               onClick={() => navigate('/lista-compras')}
               className="flex min-h-[32px] items-center text-xs font-medium text-teal-700"
@@ -640,7 +714,10 @@ export function DashboardPage() {
             <p className="mt-2 text-xs text-forest-500">Lista vazia por enquanto.</p>
           ) : (
             <>
-              <p className="mt-2 text-xs text-forest-500">
+              <p className="mt-3 text-sm font-semibold text-forest-900">
+                {items.length - pendingItems.length} de {items.length} itens
+              </p>
+              <p className="mt-0.5 text-xs text-forest-500">
                 Faltam {pendingItems.length} itens · ~R$ {estimatedTotal.toFixed(0)}
               </p>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-forest-100">
@@ -663,28 +740,40 @@ export function DashboardPage() {
         </Card>
 
         {goalsList.length > 0 && (
-          <div className="flex flex-col gap-2">
+          <Card>
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-forest-900">Metas compartilhadas</p>
               <button
                 onClick={() => navigate('/financas')}
                 className="flex min-h-[32px] items-center text-xs font-medium text-teal-700"
               >
-                Ver todas →
+                Ver tudo →
               </button>
             </div>
-            {goalsList.slice(0, 3).map((g, i) => {
-              const pct = g.target_amount ? Math.min(Math.round((g.saved_amount / g.target_amount) * 100), 100) : 0
-              const tone = EQUILIBRIO_TONES[i % EQUILIBRIO_TONES.length]
-              return (
-                <button key={g.id} onClick={() => navigate('/financas')} className="text-left">
-                  <div className="flex items-stretch gap-2 overflow-hidden rounded-sm border border-forest-100 bg-surface shadow-sm">
-                    <span className={`w-1.5 shrink-0 ${tone.bar}`} />
-                    <span className={`my-2 flex size-10 shrink-0 items-center justify-center rounded-full text-xl ${tone.card}`}>
+            <div className="mt-3 flex flex-col">
+              {goalsList.slice(0, 3).map((g, i, arr) => {
+                const pct = g.target_amount ? Math.min(Math.round((g.saved_amount / g.target_amount) * 100), 100) : 0
+                const tone = EQUILIBRIO_TONES[i % EQUILIBRIO_TONES.length]
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => navigate('/financas')}
+                    className={`flex items-start gap-3 py-3 text-left ${i < arr.length - 1 ? 'border-b border-forest-100' : ''} ${
+                      i === 0 ? 'pt-0' : ''
+                    }`}
+                  >
+                    <span className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xl ${tone.card}`}>
                       {g.icon}
                     </span>
-                    <div className="min-w-0 flex-1 py-2 pr-3">
-                      <p className="truncate text-sm font-semibold text-forest-900">{g.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-semibold text-forest-900">{g.title}</p>
+                        {g.assignee_name && (
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${tone.card} ${tone.text}`}>
+                            {g.assignee_name.split(' ')[0]}
+                          </span>
+                        )}
+                      </div>
                       {g.target_amount ? (
                         <>
                           <p className="mt-0.5 text-xs text-forest-500">R$ {formatBRL(g.target_amount)}</p>
@@ -700,11 +789,11 @@ export function DashboardPage() {
                         <span className="text-xs text-forest-500">R$ {formatBRL(g.saved_amount)} guardados</span>
                       )}
                     </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                  </button>
+                )
+              })}
+            </div>
+          </Card>
         )}
 
       </div>
@@ -765,7 +854,78 @@ export function DashboardPage() {
       <MoodCalendarModal open={showMoodCalendar} onClose={() => setShowMoodCalendar(false)} feed={feed} />
 
       <Modal open={showEquilibrioDetail} onClose={() => setShowEquilibrioDetail(false)} title="Equilíbrio da casa">
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
+          <p className="-mt-2 text-xs text-forest-500">Visão geral de como as responsabilidades estão distribuídas este mês.</p>
+
+          {twoPersonEquilibrio && (
+            <>
+              <Card>
+                <p className={`text-center text-xs font-semibold ${balanceHealthy ? 'text-teal-ink' : 'text-amber-ink'}`}>
+                  {balanceHealthy ? 'Equilíbrio saudável' : 'Vale ficar de olho'}
+                </p>
+                <p className="mt-0.5 text-center text-xs text-forest-500">
+                  {balanceHealthy
+                    ? 'A divisão das responsabilidades está equilibrada'
+                    : 'A divisão está pendendo bastante para um lado'}
+                </p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex flex-col items-center text-center">
+                    <span className="text-[28px] font-bold text-coral-ink">{twoPersonEquilibrio[0].financePct}%</span>
+                    <span className="text-xs font-semibold text-forest-700">
+                      {twoPersonEquilibrio[0].name.split(' ')[0]}
+                    </span>
+                  </div>
+                  <div className="flex flex-1 items-center justify-center gap-2">
+                    <span className="h-px flex-1 border-t border-dashed border-coral-300" />
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-app-bg text-base shadow-sm">
+                      🤍
+                    </span>
+                    <span className="h-px flex-1 border-t border-dashed border-teal-300" />
+                  </div>
+                  <div className="flex flex-col items-center text-center">
+                    <span className="text-[28px] font-bold text-teal-700">{twoPersonEquilibrio[1].financePct}%</span>
+                    <span className="text-xs font-semibold text-forest-700">
+                      {twoPersonEquilibrio[1].name.split(' ')[0]}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <p className="text-xs font-bold uppercase tracking-wide text-forest-500">Categorias</p>
+                <div className="mt-2 flex flex-col">
+                  {[
+                    { icon: '💰', bg: 'bg-amber-100', label: 'Finanças', left: twoPersonEquilibrio[0].financePct, right: twoPersonEquilibrio[1].financePct },
+                    { icon: '✅', bg: 'bg-teal-100', label: 'Tarefas', left: twoPersonEquilibrio[0].taskPct, right: twoPersonEquilibrio[1].taskPct },
+                    { icon: '🛒', bg: 'bg-coral-100', label: 'Compras', left: twoPersonEquilibrio[0].shopPct, right: twoPersonEquilibrio[1].shopPct },
+                  ].map((row, i, arr) => (
+                    <div
+                      key={row.label}
+                      className={`flex items-center gap-2 py-2 ${i < arr.length - 1 ? 'border-b border-forest-100' : ''} ${
+                        i === 0 ? 'pt-0' : ''
+                      }`}
+                    >
+                      <span className={`flex size-11 shrink-0 items-center justify-center rounded-full text-lg ${row.bg}`}>
+                        {row.icon}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-forest-900">{row.label}</p>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="w-8 shrink-0 text-xs font-semibold text-coral-ink">{row.left}%</span>
+                          <div className="flex h-1.5 flex-1 overflow-hidden rounded-full">
+                            <div className="h-full bg-coral-700" style={{ width: `${row.left}%` }} />
+                            <div className="h-full bg-teal-500" style={{ width: `${row.right}%` }} />
+                          </div>
+                          <span className="w-8 shrink-0 text-right text-xs font-semibold text-teal-700">{row.right}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </>
+          )}
+
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-forest-500">
               💰 Finanças · quem pagou nos últimos 30 dias
