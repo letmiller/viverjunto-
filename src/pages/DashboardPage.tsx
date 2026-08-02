@@ -8,6 +8,13 @@ import { Modal } from '../components/ui/Modal'
 import { MiniStatTile } from '../components/ui/MiniStatTile'
 import { BottomNav } from '../components/layout/BottomNav'
 import { MoodCalendarModal } from '../components/home/MoodCalendarModal'
+import heartIcon from '../assets/dashboard/heart.svg'
+import tileContas from '../assets/dashboard/tile-contas.png'
+import tileTarefas from '../assets/dashboard/tile-tarefas.png'
+import tileMetas from '../assets/dashboard/tile-metas.png'
+import categoryCasa from '../assets/dashboard/category-casa.png'
+import categoryFinancas from '../assets/dashboard/category-financas.png'
+import categoryTarefas from '../assets/dashboard/category-tarefas.png'
 import { formatBRL } from '../lib/currency'
 import { useSession } from '../store/session'
 import { useActivityStore } from '../store/activity'
@@ -104,14 +111,8 @@ export function DashboardPage() {
   const [showMoodCalendar, setShowMoodCalendar] = useState(false)
   const [showMoodPicker, setShowMoodPicker] = useState(false)
   const [showEquilibrioDetail, setShowEquilibrioDetail] = useState(false)
-  const [checklistDismissed, setChecklistDismissed] = useState(() => localStorage.getItem('vj_checklist_dismissed') === '1')
   const [showAllActivity, setShowAllActivity] = useState(false)
   const markActivitySeen = useActivityStore((s) => s.markSeen)
-
-  function dismissChecklist() {
-    localStorage.setItem('vj_checklist_dismissed', '1')
-    setChecklistDismissed(true)
-  }
 
   async function setMyMood(value: string) {
     try {
@@ -173,20 +174,6 @@ export function DashboardPage() {
   const myMoodToday = checkins.find((c) => c.user_id === user?.id)?.mood
   const pendingItems = items.filter((i) => !i.checked)
   const estimatedTotal = pendingItems.reduce((sum, i) => sum + (i.price ?? 0), 0)
-
-  const checklist = [
-    { label: 'Adicionar sua 1ª tarefa', done: taskList.length > 0, to: '/organizacao' },
-    { label: 'Registrar seu 1º gasto', done: recentTransactions.length > 0, to: '/financas' },
-    {
-      label: 'Convidar seu par',
-      done: members.length > 1 || localStorage.getItem('vj_invite_skipped') === '1',
-      to: '/convidar',
-    },
-    { label: 'Registrar seu humor hoje', done: checkins.some((c) => c.user_id === user?.id), to: '/dashboard' },
-    { label: 'Adicionar item na lista de compras', done: items.length > 0, to: '/lista-compras' },
-  ]
-  const checklistDone = checklist.filter((c) => c.done).length
-  const showChecklist = checklistDone < checklist.length && !checklistDismissed
 
   const assignedTasks = taskList.filter((t) => t.assigned_to)
   const loadByMember = members
@@ -380,13 +367,16 @@ export function DashboardPage() {
         )}
       </div>
 
-      <div className="relative z-10 -mt-16 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
+      {/* Overlap capped at the header's own bottom padding (pb-8 = 32px) so
+          this can never eat into real header content, no matter how tall
+          the header ends up (e.g. no split bar for non-2-person households). */}
+      <div className="relative z-10 -mt-8 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
         <Card>
           <p className="text-sm font-semibold text-forest-900">Visão geral</p>
           <p className="text-xs text-forest-500">O que precisa da sua atenção</p>
           <div className="mt-3 flex gap-2">
             <MiniStatTile
-              icon="📅"
+              icon={<img src={tileContas} alt="" className="size-full object-cover" />}
               title="Contas"
               value={billsDueSoon > 0 ? `${billsDueSoon} em breve` : '0 em breve'}
               sub={nextBill ? `Próx: R$ ${formatBRL(nextBill.amount)}` : undefined}
@@ -394,7 +384,7 @@ export function DashboardPage() {
               onClick={() => navigate('/financas')}
             />
             <MiniStatTile
-              icon="✓"
+              icon={<img src={tileTarefas} alt="" className="size-full object-cover" />}
               title="Tarefas"
               value={String(pendingTasksCount)}
               sub={overdueTasks > 0 ? `${overdueTasks} urgentes` : undefined}
@@ -402,7 +392,7 @@ export function DashboardPage() {
               onClick={() => navigate('/organizacao')}
             />
             <MiniStatTile
-              icon="✨"
+              icon={<img src={tileMetas} alt="" className="size-full object-cover" />}
               title="Metas"
               value={goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}
               sub="Do objetivo"
@@ -411,52 +401,6 @@ export function DashboardPage() {
             />
           </div>
         </Card>
-
-        {showChecklist && (
-          <Card>
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-forest-900">Primeiros passos</p>
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-medium text-teal-700">
-                  {checklistDone} de {checklist.length}
-                </span>
-                <button
-                  onClick={dismissChecklist}
-                  aria-label="Fazer isso depois"
-                  title="Fazer depois"
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full text-forest-300 hover:bg-forest-50 hover:text-forest-700"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-forest-100">
-              <div
-                className="h-full rounded-full bg-teal-500 transition-all"
-                style={{ width: `${(checklistDone / checklist.length) * 100}%` }}
-              />
-            </div>
-            <div className="mt-3 flex flex-col gap-2">
-              {checklist.map((c) => (
-                <button
-                  key={c.label}
-                  onClick={() => navigate(c.to)}
-                  disabled={c.done}
-                  className="flex min-h-[32px] items-center gap-2 text-left text-xs"
-                >
-                  <span
-                    className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 text-xs ${
-                      c.done ? 'border-teal-500 bg-teal-500 text-white' : 'border-forest-100 text-forest-100'
-                    }`}
-                  >
-                    {c.done ? '✓' : ''}
-                  </span>
-                  <span className={c.done ? 'text-forest-400 line-through' : 'text-forest-700'}>{c.label}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-        )}
 
         <Card>
           <div className="flex items-center justify-between">
@@ -620,8 +564,8 @@ export function DashboardPage() {
                 </div>
                 <div className="flex flex-1 items-center justify-center gap-2">
                   <span className="h-px flex-1 border-t border-dashed border-coral-300" />
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-base shadow-sm">
-                    🤍
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface shadow-sm">
+                    <img src={heartIcon} alt="" className="h-6 w-8" />
                   </span>
                   <span className="h-px flex-1 border-t border-dashed border-teal-300" />
                 </div>
@@ -895,9 +839,9 @@ export function DashboardPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-forest-500">Categorias</p>
                 <div className="mt-2 flex flex-col">
                   {[
-                    { icon: '💰', bg: 'bg-amber-100', label: 'Finanças', left: twoPersonEquilibrio[0].financePct, right: twoPersonEquilibrio[1].financePct },
-                    { icon: '✅', bg: 'bg-teal-100', label: 'Tarefas', left: twoPersonEquilibrio[0].taskPct, right: twoPersonEquilibrio[1].taskPct },
-                    { icon: '🛒', bg: 'bg-coral-100', label: 'Compras', left: twoPersonEquilibrio[0].shopPct, right: twoPersonEquilibrio[1].shopPct },
+                    { icon: categoryFinancas, label: 'Finanças', left: twoPersonEquilibrio[0].financePct, right: twoPersonEquilibrio[1].financePct },
+                    { icon: categoryCasa, label: 'Tarefas', left: twoPersonEquilibrio[0].taskPct, right: twoPersonEquilibrio[1].taskPct },
+                    { icon: categoryTarefas, label: 'Compras', left: twoPersonEquilibrio[0].shopPct, right: twoPersonEquilibrio[1].shopPct },
                   ].map((row, i, arr) => (
                     <div
                       key={row.label}
@@ -905,8 +849,8 @@ export function DashboardPage() {
                         i === 0 ? 'pt-0' : ''
                       }`}
                     >
-                      <span className={`flex size-11 shrink-0 items-center justify-center rounded-full text-lg ${row.bg}`}>
-                        {row.icon}
+                      <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-forest-50">
+                        <img src={row.icon} alt="" className="size-full object-cover" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-forest-900">{row.label}</p>

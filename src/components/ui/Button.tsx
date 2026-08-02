@@ -11,8 +11,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
+  // Glossy "candy button" look from Figma btn/primary: a hard offset shadow
+  // for depth plus an inset top highlight for the glassy sheen — kept as a
+  // one-off shadow value (not a palette token) since it's a bespoke depth
+  // effect, matching how the design system's other custom shadows work.
   primary:
-    'bg-coral-700 text-white shadow-sm hover:bg-coral-900 disabled:bg-forest-100 disabled:text-forest-300 disabled:shadow-none',
+    'rounded-[16px] bg-coral-700 text-base text-white shadow-[-1px_2px_0_0_#cc1900,inset_0_4px_4px_0_rgba(255,255,255,0.25)] hover:bg-coral-900 disabled:bg-forest-100 disabled:text-forest-300 disabled:shadow-none',
   secondary:
     'bg-surface text-forest-900 border border-forest-100 shadow-xs hover:border-teal-500 disabled:text-forest-300',
   ghost: 'bg-transparent text-forest-700 hover:bg-forest-50 disabled:text-forest-300',

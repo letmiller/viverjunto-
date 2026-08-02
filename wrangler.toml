@@ -6,3 +6,10 @@ pages_build_output_dir = "dist"
 binding = "DB"
 database_name = "viver-junto-db"
 database_id = "7819f92d-c1f3-4e53-95e3-93fecbdfca9d"
+
+# Preview deployments (dev.viver-junto.pages.dev) use a separate D1 database
+# so testing/demo data never touches production.
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "viver-junto-db-preview"
+database_id = "b65642fc-8812-4a68-8465-96dbe27b259c"

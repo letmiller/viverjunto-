@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 // bg-*-50/100 accent tints never invert for dark mode (by design — see
 // index.css), so any text sitting on them must also stay a fixed color.
 // Only the "forest" tone's background is a neutral that DOES invert, so its
@@ -26,7 +28,8 @@ export function MiniStatTile({
   layout = 'left',
   onClick,
 }: {
-  icon: string
+  /** Emoji string, or a ReactNode (e.g. an <img>) for a real illustrated icon. */
+  icon: string | ReactNode
   title: string
   value: string
   sub?: string
@@ -57,7 +60,7 @@ export function MiniStatTile({
       className={`flex flex-1 flex-col items-start gap-1 rounded-lg border ${t.border} ${t.bg} p-2 text-left shadow-xs`}
     >
       <span className="flex items-center gap-1.5">
-        <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${t.iconBg} text-sm`}>{icon}</span>
+        <span className={`flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full ${t.iconBg} text-sm`}>{icon}</span>
         <span className={`text-xs font-semibold ${t.titleText}`}>{title}</span>
       </span>
       <span className={`text-base font-bold ${t.valueText}`}>{value}</span>
