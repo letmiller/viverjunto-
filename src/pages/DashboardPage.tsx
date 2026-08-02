@@ -14,6 +14,7 @@ import tileMetas from '../assets/dashboard/tile-metas.png'
 import categoryCasa from '../assets/dashboard/category-casa.png'
 import categoryFinancas from '../assets/dashboard/category-financas.png'
 import categoryTarefas from '../assets/dashboard/category-tarefas.png'
+import { GOAL_PRESETS } from '../lib/goalPresets'
 import { formatBRL } from '../lib/currency'
 import { useSession } from '../store/session'
 import { useActivityStore } from '../store/activity'
@@ -621,8 +622,16 @@ export function DashboardPage() {
                       i === 0 ? 'pt-0' : ''
                     }`}
                   >
-                    <span className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xl ${tone.card}`}>
-                      {g.icon}
+                    <span className={`flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full text-xl ${tone.card}`}>
+                      {GOAL_PRESETS.find((p) => p.emoji === g.icon)?.icon ? (
+                        <img
+                          src={GOAL_PRESETS.find((p) => p.emoji === g.icon)!.icon}
+                          alt=""
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        g.icon
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
