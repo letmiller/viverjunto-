@@ -5,10 +5,10 @@ import { AuraBackground } from '../components/ui/AuraBackground'
 import { Card } from '../components/ui/Card'
 import { Fab } from '../components/ui/Fab'
 import { Modal } from '../components/ui/Modal'
-import { MiniStatTile } from '../components/ui/MiniStatTile'
 import { BottomNav } from '../components/layout/BottomNav'
 import { MoodCalendarModal } from '../components/home/MoodCalendarModal'
 import heartIcon from '../assets/dashboard/heart.svg'
+import chevronIcon from '../assets/dashboard/chevron.svg'
 import tileContas from '../assets/dashboard/tile-contas.png'
 import tileTarefas from '../assets/dashboard/tile-tarefas.png'
 import tileMetas from '../assets/dashboard/tile-metas.png'
@@ -221,7 +221,6 @@ export function DashboardPage() {
 
   // Mini-stat row: Contas / Tarefas / Metas at a glance.
   const unpaidBillsSorted = bills.filter((b) => !b.paid).sort((a, b) => a.due_date.localeCompare(b.due_date))
-  const nextBill = unpaidBillsSorted[0]
   const pendingTasksCount = taskList.filter((t) => t.status === 'pending').length
   const goalsWithTarget = goalsList.filter((g) => g.target_amount)
   const goalsAvgPct =
@@ -324,7 +323,7 @@ export function DashboardPage() {
         ]}
       />
 
-      <div className="relative z-10 bg-ink px-4 pb-8 pt-6 text-white">
+      <div className="relative z-10 bg-ink px-4 pb-6 pt-6 text-white">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-ink-muted">{todayLongLabel()}</p>
@@ -367,38 +366,56 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* Overlap capped at the header's own bottom padding (pb-8 = 32px) so
-          this can never eat into real header content, no matter how tall
-          the header ends up (e.g. no split bar for non-2-person households). */}
-      <div className="relative z-10 -mt-8 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
+      {/* No overlap with the header — a fixed negative margin here previously
+          assumed a specific header height and ended up covering real content
+          (the per-person split bar) whenever the header rendered shorter.
+          The header's own pb-6 (24px) is the only spacing needed. */}
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-28">
         <Card>
           <p className="text-sm font-semibold text-forest-900">Visão geral</p>
           <p className="text-xs text-forest-500">O que precisa da sua atenção</p>
           <div className="mt-3 flex gap-2">
-            <MiniStatTile
-              icon={<img src={tileContas} alt="" className="size-full object-cover" />}
-              title="Contas"
-              value={billsDueSoon > 0 ? `${billsDueSoon} em breve` : '0 em breve'}
-              sub={nextBill ? `Próx: R$ ${formatBRL(nextBill.amount)}` : undefined}
-              tone="amber"
+            <button
               onClick={() => navigate('/financas')}
-            />
-            <MiniStatTile
-              icon={<img src={tileTarefas} alt="" className="size-full object-cover" />}
-              title="Tarefas"
-              value={String(pendingTasksCount)}
-              sub={overdueTasks > 0 ? `${overdueTasks} urgentes` : undefined}
-              tone="teal"
+              className="flex flex-1 flex-col gap-2 rounded-sm border-[1.5px] border-amber-500 bg-amber-100 p-2 text-left shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-300">
+                  <img src={tileContas} alt="" className="size-full object-cover" />
+                </span>
+                <img src={chevronIcon} alt="" className="size-5 shrink-0" />
+              </div>
+              <span className="text-sm font-semibold text-amber-ink">Contas</span>
+              <span className="text-sm font-bold text-forest-900/80">{billsDueSoon} em breve</span>
+            </button>
+            <button
               onClick={() => navigate('/organizacao')}
-            />
-            <MiniStatTile
-              icon={<img src={tileMetas} alt="" className="size-full object-cover" />}
-              title="Metas"
-              value={goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}
-              sub="Do objetivo"
-              tone="coral"
+              className="flex flex-1 flex-col gap-2 rounded-sm border-[1.5px] border-teal-100 bg-teal-50 p-2 text-left shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-teal-300">
+                  <img src={tileTarefas} alt="" className="size-full object-cover" />
+                </span>
+                <img src={chevronIcon} alt="" className="size-5 shrink-0" />
+              </div>
+              <span className="text-sm font-semibold text-teal-700">Tarefas</span>
+              <span className="text-sm font-bold text-forest-900/80">
+                {overdueTasks > 0 ? `${overdueTasks} urgentes` : `${pendingTasksCount} pendentes`}
+              </span>
+            </button>
+            <button
               onClick={() => navigate('/financas')}
-            />
+              className="flex flex-1 flex-col gap-2 rounded-sm border-[1.5px] border-coral-300 bg-coral-100 p-2 text-left shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-coral-100">
+                  <img src={tileMetas} alt="" className="size-full object-cover" />
+                </span>
+                <img src={chevronIcon} alt="" className="size-5 shrink-0" />
+              </div>
+              <span className="text-sm font-semibold text-coral-ink">Metas</span>
+              <span className="text-sm font-bold text-forest-900/80">{goalsAvgPct !== null ? `${goalsAvgPct}%` : '—'}</span>
+            </button>
           </div>
         </Card>
 
